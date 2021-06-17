@@ -1,16 +1,15 @@
-import logging
 from abc import abstractmethod
 
 import torch
-import torchvision.models
 from PIL.JpegImagePlugin import JpegImageFile
 from torch import Tensor
+from torch.nn import Module
 from torchvision import transforms
 
 from domain.services.labeler import Labeler
 
 
-class ImageClassification:
+class ImageClassifier:
     @abstractmethod
     def classify_jpeg(self, input_image: JpegImageFile) -> str:
         """
@@ -21,20 +20,16 @@ class ImageClassification:
         raise NotImplementedError
 
 
-class ResNetImageClassification(ImageClassification):
-    def __init__(self, labeler: Labeler) -> None:
-        self.__labeler = labeler  # To annotate the result (from index to English for us mere mortals).
-        self.__model = torchvision.models.resnet18(pretrained=True)  # Obtain the pretrained model.
-        self.__model.eval()  # Put it in evaluation mode, don't know why, just how it works internally.
-
-        # Every model expects a certain input, we must preprocess it into normalized tensors.
-        # https://pytorch.org/hub/pytorch_vision_resnet/
-        self.__preprocessor = preprocess = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
+class ResNetImageClassifier(ImageClassifier):
+    def __init__(
+            self,
+            model: Module,
+            preprocessor: transforms.Compose,
+            labeler: Labeler
+    ) -> None:
+        self.__model = model
+        self.__preprocessor = preprocessor
+        self.__labeler = labeler
 
     def classify_jpeg(self, input_image: JpegImageFile) -> str:
         input_tensor = self.__preprocessor(input_image)  # type: Tensor
